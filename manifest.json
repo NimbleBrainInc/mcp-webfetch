@@ -1,0 +1,55 @@
+{
+  "manifest_version": "0.4",
+  "name": "@nimblebraininc/webfetch",
+  "version": "0.1.0",
+  "description": "Fetch web pages and answer questions about their content using Claude",
+  "author": {
+    "name": "NimbleBrain Inc",
+    "email": "hello@nimblebrain.ai"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NimbleBrainInc/mcp-webfetch"
+  },
+  "user_config": {
+    "anthropic_api_key": {
+      "type": "string",
+      "title": "Anthropic API Key",
+      "description": "Get your API key from https://console.anthropic.com/",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "server": {
+    "type": "python",
+    "entry_point": "mcp_webfetch.server",
+    "mcp_config": {
+      "command": "python",
+      "args": [
+        "-m",
+        "mcp_webfetch.server"
+      ],
+      "env": {
+        "ANTHROPIC_API_KEY": "${user_config.anthropic_api_key}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "web_fetch",
+      "description": "Fetch a web page and answer questions about its content"
+    }
+  ],
+  "_meta": {
+    "org.mpaktrust": {
+      "mtf_version": "0.1",
+      "permissions": {
+        "filesystem": "none",
+        "network": "outbound",
+        "environment": "read",
+        "subprocess": "none",
+        "native": "none"
+      }
+    }
+  }
+}
