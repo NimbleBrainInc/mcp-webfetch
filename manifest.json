@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.4",
   "name": "@nimblebraininc/webfetch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Fetch web pages and answer questions about their content using Claude",
   "author": {
     "name": "NimbleBrain Inc",
