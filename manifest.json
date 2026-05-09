@@ -1,12 +1,13 @@
 {
   "manifest_version": "0.4",
   "name": "@nimblebraininc/webfetch",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Fetch web pages and answer questions about their content using Claude",
   "author": {
     "name": "NimbleBrain Inc",
     "email": "hello@nimblebrain.ai"
   },
+  "icon": "https://static.nimblebrain.ai/icons/webfetch.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/NimbleBrainInc/mcp-webfetch"
