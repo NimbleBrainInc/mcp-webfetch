@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastmcp import Client
 
+from mcp_webfetch.fetcher import FetchError
 from mcp_webfetch.server import mcp
 
 
@@ -80,3 +81,37 @@ async def test_web_fetch_with_http_url() -> None:
             url="http://example.com",
             prompt="Summarize this page.",
         )
+
+
+@pytest.mark.asyncio
+async def test_fetch_error_is_reported_as_tool_error() -> None:
+    """A fetch failure reaches the caller as an error result with its message."""
+    with patch("mcp_webfetch.server.get_fetcher") as mock_get_fetcher:
+        mock_fetcher = AsyncMock()
+        mock_fetcher.fetch_and_summarize.side_effect = FetchError("HTTP 404", url="https://x.test")
+        mock_get_fetcher.return_value = mock_fetcher
+
+        async with Client(mcp) as client:
+            result = await client.call_tool(
+                "web_fetch", {"url": "https://x.test", "prompt": "summarize"}, raise_on_error=False
+            )
+
+        assert result.is_error
+        assert "Fetch error: HTTP 404" in result.content[0].text
+
+
+@pytest.mark.asyncio
+async def test_missing_api_key_is_reported_as_tool_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without an API key the caller learns which variable to set."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr("mcp_webfetch.server._fetcher", None)
+
+    async with Client(mcp) as client:
+        result = await client.call_tool(
+            "web_fetch", {"url": "https://x.test", "prompt": "summarize"}, raise_on_error=False
+        )
+
+    assert result.is_error
+    assert "ANTHROPIC_API_KEY" in result.content[0].text
