@@ -6,12 +6,16 @@ import sys
 from importlib.resources import files
 
 from dotenv import load_dotenv
-from fastmcp import Context, FastMCP
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from .fetcher import FetchError, WebFetcher
 
+# Diagnostics go to stderr (stdout is reserved for JSON-RPC), never to the client: MCP's
+# logging capability is deprecated as of the 2026-07-28 protocol (SEP-2577). A failure the
+# caller must see is raised as a ToolError.
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -42,13 +46,18 @@ _fetcher: WebFetcher | None = None
 
 
 def get_fetcher() -> WebFetcher:
-    """Get or create the WebFetcher instance."""
+    """Get or create the WebFetcher instance.
+
+    Raises:
+        ToolError: when ANTHROPIC_API_KEY is not set, so the caller sees why the tool failed.
+    """
     global _fetcher
     if _fetcher is None:
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
-            raise ValueError(
-                "ANTHROPIC_API_KEY is required. "
+            logger.error("ANTHROPIC_API_KEY is not set")
+            raise ToolError(
+                "ANTHROPIC_API_KEY environment variable is required. "
                 "Get your API key from https://console.anthropic.com/"
             )
         _fetcher = WebFetcher(api_key=api_key)
@@ -65,7 +74,6 @@ async def health_check(request: Request) -> JSONResponse:
 async def web_fetch(
     url: str,
     prompt: str,
-    ctx: Context | None = None,
 ) -> str:
     """Fetch a web page and answer questions about its content.
 
@@ -75,22 +83,18 @@ async def web_fetch(
     Args:
         url: The URL to fetch content from. HTTP URLs are auto-upgraded to HTTPS.
         prompt: Question or instruction about the page content.
-        ctx: MCP context.
 
     Returns:
         AI-generated response about the page content.
     """
     fetcher = get_fetcher()
-
-    if ctx:
-        await ctx.info(f"Fetching {url[:80]}...")
+    logger.info("Fetching %s", url[:80])
 
     try:
         result = await fetcher.fetch_and_summarize(url=url, prompt=prompt)
     except FetchError as e:
-        if ctx:
-            await ctx.error(f"Fetch error: {e}")
-        raise
+        logger.warning("web_fetch failed for %s: %s", url[:80], e)
+        raise ToolError(f"Fetch error: {e}") from e
 
     return result
 
